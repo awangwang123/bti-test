@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- 页面最顶部定义：确保按钮点击100%有效，即使JS还没加载完 -->
+<script>
+window.BTI_PENDING = false;
+window.goTest = function() {
+    if (typeof startQuiz === 'function') {
+        startQuiz();
+    } else {
+        window.BTI_PENDING = true;
+        var btn = document.querySelector('.btn-start');
+        if (btn) btn.textContent = '⏳ 准备中...';
+    }
+};
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTI 反差人格测试</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0d1a;color:#e0e0e0;min-height:100vh}
+.container{max-width:480px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:30px 0 20px}
+.header h1{font-size:24px;font-weight:800;letter-spacing:1px;
+  background:linear-gradient(90deg,#ff6b6b,#feca57,#48dbfb,#ff9ff3,#ff6b6b);
+  background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  animation:flowText 3s linear infinite}
+@keyframes flowText{to{background-position:200% center}}
+.header p{color:#666;font-size:13px;margin-top:4px}
+#home{display:block;text-align:center;padding:40px 20px}
+.subtitle{color:#888;font-size:14px;line-height:1.8;margin-bottom:30px}
+.btn-start{background:linear-gradient(135deg,#ff6b81,#ff4757);color:#fff;border:none;padding:14px 50px;border-radius:25px;font-size:17px;cursor:pointer;font-weight:bold;transition:transform .2s}
+.btn-start:hover{transform:scale(1.05)}
+#quiz{padding:20px 16px}
+.progress-bar{width:100%;height:4px;background:#1a1a2e;border-radius:2px;margin-bottom:24px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#ff6b81,#ff4757);transition:width .3s;width:0%}
+.q-num{font-size:13px;color:#ff6b81;margin-bottom:8px}
+.q-text{font-size:18px;line-height:1.5;margin-bottom:20px;font-weight:600}
+.options{display:flex;flex-direction:column;gap:10px}
+.option{background:#151528;border:2px solid #252545;border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;font-size:15px}
+.option:hover{border-color:#ff6b81;background:#1a1a35}
+.option.selected{border-color:#ff6b81;background:rgba(255,107,129,.15)}
+.opt-letter{width:28px;height:28px;border-radius:50%;background:#252545;color:#888;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;flex-shrink:0}
+.option.selected .opt-letter{background:#ff6b81;color:#fff}
+footer{text-align:center;color:#444;font-size:11px;padding:20px}
+
+/* 结果页增强 */
+.result-card-img{width:180px;height:180px;border-radius:20px;object-fit:cover;margin:0 auto 18px;display:block;border:3px solid rgba(255,255,255,.08)}
+.result-name-bar{background:linear-gradient(135deg,#5f6cff,#7c5cfc);border-radius:12px;padding:14px 20px;margin-bottom:16px;text-align:center}
+.result-name-bar h2{font-size:26px;color:#fff;margin:0}
+
+/* 四维反差拆解 */
+.dim-breakdown{margin-bottom:18px;background:rgba(255,255,255,.03);border-radius:12px;padding:14px 16px}
+.dim-row{display:flex;align-items:center;margin-bottom:10px}
+.dim-row:last-child{margin-bottom:0}
+.dim-icon{font-size:14px;width:24px;flex-shrink:0}
+.dim-label{font-size:13px;color:#999;width:40px;flex-shrink:0}
+.dim-letter{font-size:13px;width:22px;flex-shrink:0;color:#888;text-align:center}
+.dim-letter b{color:#fff;background:rgba(255,107,129,.15);padding:1px 5px;border-radius:4px;font-weight:700}
+.dim-tilt-hot b{color:#ff4757;background:rgba(255,71,87,.25);text-shadow:0 0 8px rgba(255,71,87,.5)}
+.dim-tilt-cold b{color:#48dbfb;background:rgba(72,219,251,.25);text-shadow:0 0 8px rgba(72,219,251,.5)}
+.dim-bar-wrap{flex:1;display:flex;align-items:center;position:relative;height:20px;margin:0 4px;border-radius:10px;overflow:hidden;background:#151528}
+.bar-hot{height:100%;background:linear-gradient(90deg,#ff6b6b,#ff4757);border-radius:10px 0 0 10px;transition:width .5s ease}
+.bar-cold{height:100%;background:linear-gradient(90deg,#48dbfb,#7c5cfc);border-radius:0 10px 10px 0;transition:width .5s ease}
+.dim-pct-center{display:none}
+.bar-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:#fff;text-shadow:0 0 5px rgba(0,0,0,.9);white-space:nowrap;z-index:2;pointer-events:none}
+/* 热侧/冷侧进度条 */
+.bar-hot{height:8px;border-radius:4px 0 0 4px;transition:width .6s ease;background:linear-gradient(90deg,#ff6b81,#ff4757);position:relative}
+.bar-cold{height:8px;border-radius:0 4px 4px 0;transition:width .6s ease;background:linear-gradient(90deg,#48dbfb,#7c5cfc);position:relative}
+.result-slogan-sm{color:rgba(255,255,255,.75);font-size:13px;margin-top:4px;font-style:italic}
+.desc-box{background:rgba(255,255,255,.04);border-left:4px solid #5f6cff;border-radius:0 12px 12px 0;padding:16px 18px;margin-bottom:16px;line-height:1.9;font-size:15px;color:#ccc}
+.roast-box{background:linear-gradient(135deg,rgba(255,107,129,.08),rgba(255,71,87,.04));border-left:4px solid #ff6b81;border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:14px;text-align:left}
+.roast-label{color:#ff6b81;font-size:13px;margin-bottom:6px;font-weight:600}
+.roast-text{color:#ffa0ab;font-size:14px;line-height:1.7;font-style:italic}
+.heal-box{background:linear-gradient(135deg,rgba(72,219,251,.06),rgba(159,168,218,.03));border-left:4px solid #48dbfb;border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:20px;text-align:left}
+.heal-label{color:#48dbfb;font-size:13px;margin-bottom:6px;font-weight:600}
+.heal-text{color:#9de8fb;font-size:14px;line-height:1.7}
+.tags-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:18px}
+.rarity-row{text-align:center;margin:12px 0}.rarity-bar{display:inline-block;padding:6px 16px;border-radius:20px;font-size:14px;color:#ffd700;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);animation:fadeIn .5s ease}.rarity-num{font-weight:700;color:#ffd700;font-size:16px}
+.tag-pill{background:rgba(255,255,255,.07);color:#999;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 14px;font-size:12px}
+.btn-share{background:linear-gradient(135deg,#5f6cff,#7c5cfc);color:#fff;border:none;padding:14px 44px;border-radius:25px;font-size:17px;cursor:pointer;font-weight:bold;transition:transform .2s;display:inline-block}
+.btn-share:hover{transform:scale(1.05)}
+
+/* 分享卡片样式 */
+#shareArea{display:none;position:fixed;top:-9999px;left:-9999px;width:420px;background:linear-gradient(180deg,#1a1a35,#12122a);border-radius:20px;overflow:hidden;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#shareArea .scard-header{padding:30px 24px 16px;text-align:center}
+#shareArea .scard-title{font-size:22px;font-weight:800;color:#fff}
+#shareArea .scard-sub{color:#888;font-size:12px;margin-top:2px}
+#shareArea .scard-body{padding:0 20px}
+#shareArea .scard-img{width:160px;height:160px;border-radius:16px;object-fit:cover;margin:0 auto 14px;display:block;border:3px solid rgba(95,108,255,.3)}
+#shareArea .scard-name-bar{background:linear-gradient(135deg,#5f6cff,#7c5cfc);border-radius:10px;padding:10px 16px;text-align:center;margin-bottom:12px}
+#shareArea .scard-name-bar h3{font-size:20px;color:#fff;margin:0}
+#shareArea .scard-name-bar p{color:rgba(255,255,255,.7);font-size:11px;margin-top:2px;font-style:italic}
+#shareArea .scard-desc{background:rgba(255,107,129,.06);border-left:3px solid #ff6b81;border-radius:0 8px 8px 0;padding:12px 14px;font-size:13px;line-height:1.7;color:#bbb;margin-bottom:10px}
+.scard-roast-label{font-size:13px;color:#ff6b81;margin:12px 0 4px;font-weight:700}
+#shareArea .scard-heal-label{color:#48dbfb;font-size:12px;margin-bottom:4px}
+#shareArea .scard-heal-text{color:#9de8fb;font-size:12.5px;line-height:1.65;margin-bottom:12px}
+#shareArea .scard-tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px}
+#shareArea .scard-tag{background:rgba(255,255,255,.06);color:#777;border-radius:14px;padding:3px 11px;font-size:11px}
+#shareArea .scard-banner{background:linear-gradient(90deg,#ff6b81,#feca57,#48dbfb,#ff9ff3);text-align:center;padding:10px;font-size:14px;font-weight:800;color:#fff}
+#shareArea .scard-footer{background:rgba(0,0,0,.3);text-align:center;padding:10px;font-size:11px;color:#555}
+
+/* 卡片预览弹窗 */
+#cardOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+#cardLoading{color:#888;font-size:15px}
+#cardPreviewWrap{display:none}
+#cardPreview{max-width:90%;max-height:80vh;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+
+/* 隐藏人格徽章 */
+.hidden-badge{display:inline-block;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#1a1a2e;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:8px;letter-spacing:1px;box-shadow:0 2px 10px rgba(255,170,0,.3);animation:badgePop .5s cubic-bezier(.34,1.56,.64,1)}
+.hidden-congrats{color:#ffd700;font-size:14px;text-align:center;margin:8px 0;font-weight:600;letter-spacing:1px;text-shadow:0 0 10px rgba(255,215,0,.2)}
+@keyframes badgePop{0%{transform:scale(0) rotate(-10deg);opacity:0}70%{transform:scale(1.1) rotate(2deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>🔥 BTI 反差人格测试</h1><p>Battle Type Indicator</p></div>
+
+<div id="home">
+<div class="subtitle">你的反差是哪一种？<br>你到底是哪种主导生命体？<br><span style="color:#ff6b81;">测测就知道了！</span></div>
+<button class="btn-start" onclick="goTest()">开始测试</button>
+<footer>共 16 题 · 约 1 分钟 · 无需注册</footer>
+</div>
+
+<div id="quiz" style="display:none">
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+<div id="quizContent"></div>
+</div>
+
+<div id="result" style="display:none">
+<div style="padding:20px 16px 40px">
+<img id="resultImg" class="result-card-img" src="" alt="">
+<div class="result-name-bar">
+<h2 id="resultTitle"></h2>
+<p class="result-slogan-sm" id="resultSlogan"></p>
+<p style="color:rgba(255,255,255,.5);font-size:11px;letter-spacing:2px;margin-top:4px" id="resultCode"></p><div id="hiddenBadge"></div>
+</div>
+<div class="dim-breakdown" id="dimBreakdown"></div>
+<div id="resultDesc" class="desc-box"></div>
+<div class="roast-box">
+<p class="roast-label">一句话吐槽</p>
+<p class="roast-text" id="resultRoast"></p>
+</div>
+<div class="heal-box">
+<p class="heal-label">反转治愈</p>
+<p class="heal-text" id="resultHeal"></p>
+</div>
+<div class="rarity-row" id="resultRarity"></div>
+<div class="tags-row" id="resultTags"></div>
+<div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+<button class="btn-share" onclick="shareCard()">分享卡片</button>
+<button class="btn-start" onclick="location.reload()" style="padding:14px 44px;font-size:17px">再测一次</button>
+</div>
+</div>
+</div>
+
+<!-- 分享卡片隐藏渲染区 -->
+<div id="shareArea">
+<div class="scard-header">
+<div class="scard-title">🔥 BTI 反差人格测试</div>
+<div class="scard-sub">Battle Type Indicator</div>
+</div>
+<div class="scard-body">
+<img class="scard-img" id="shareImg" src="" alt="">
+<div class="scard-name-bar">
+<h3 id="shareName"></h3>
+<p id="shareSlogan"></p>
+<p id="shareCode" style="color:rgba(255,255,255,.5);font-size:10px;margin-top:3px;letter-spacing:2px;"></p>
+</div>
+<div id="shareHiddenBadge" style="display:none;text-align:center;margin:10px 0;background:linear-gradient(90deg,#ffd700,#ffed4e);color:#8b4513;font-size:13px;font-weight:bold;padding:8px 20px;border-radius:20px;box-shadow:0 0 15px rgba(255,215,0,0.3);">🏆 隐藏人格</div>
+<div id="shareRarity" style="text-align:center;margin:8px 0;color:#ffd700;font-size:14px;font-weight:bold;text-shadow:0 0 8px rgba(255,215,0,0.3);"></div>
+<p class="scard-roast-label">一句话吐槽</p>
+<div class="scard-desc" id="shareDesc"></div>
+<p class="scard-heal-label">反转治愈</p>
+<p class="scard-heal-text" id="shareHeal"></p>
+<div class="scard-tags" id="shareTags"></div>
+</div>
+<div class="scard-banner">BTI 反差人格测试</div>
+<div class="scard-footer">你也来测测你的反差人格？</div>
+</div>
+</div>
+
+<!-- 卡片预览弹窗 -->
+<div id="cardOverlay">
+  <div id="cardLoading">⏳ 正在生成分享卡片...</div>
+  <div id="cardPreviewWrap"><img id="cardPreview" alt="分析卡片"></div>
+  <div id="cardActions" style="display:none;gap:12px;margin-top:20px">
+    <button onclick="downloadCard()" style="background:linear-gradient(135deg,#5f6cff,#7c5cfc);color:#fff;border:none;padding:12px 28px;border-radius:25px;font-size:15px;cursor:pointer;font-weight:bold">💾 保存图片</button>
+    <button onclick="closeCardPreview()" style="background:rgba(255,255,255,.1);color:#ccc;border:1px solid rgba(255,255,255,.2);padding:12px 28px;border-radius:25px;font-size:15px;cursor:pointer">关闭</button>
+  </div>
+</div>
+
+<script>
+console.log('[BTI] Script loaded');
+
+const DIMENSIONS = [
+  { key:'H', hot:'H', cold:'C', name:'能量', hotName:'热烈', coldName:'冷静' },
+  { key:'F', fast:'F', slow:'S', name:'决策', fastName:'快速', slowName:'缓慢' },
+  { key:'L', loud:'L', quiet:'Q', name:'社交', loudName:'外放', quietName:'内敛' },
+  { key:'X', explode:'X', defend:'D', name:'应对', explodeName:'爆发', defendName:'防御' }
+];
+
+const QUESTIONS = [
+  { dim:'H', q:'朋友临时约你出门，你？', options:[
+    {text:'已经出门了',score:{H:2}},{text:'问清楚去哪再决定',score:{H:1,C:1}},
+    {text:'先想想有没有别的事',score:{H:1,C:1}},{text:'不去了，已在被窝',score:{C:2}}]},
+  { dim:'H', q:'周末你通常？', options:[
+    {text:'排满活动',score:{H:2}},{text:'见1-2个朋友',score:{H:1,C:1}},
+    {text:'在家躺平但可被约出',score:{H:1,C:1}},{text:'谁也别烦我',score:{C:2}}]},
+  { dim:'F', q:'做决定时你更？', options:[
+    {text:'凭直觉秒决定',score:{F:2}},{text:'快速但有依据',score:{F:1,S:1}},
+    {text:'需要想一晚上',score:{F:1,S:1}},{text:'信息不够绝不决定',score:{S:2}}]},
+  { dim:'F', q:'面对新机会你通常？', options:[
+    {text:'先上了再说',score:{F:2}},{text:'快速评估后行动',score:{F:1,S:1}},
+    {text:'先调研再决定',score:{F:1,S:1}},{text:'列出所有风险再说',score:{S:2}}]},
+  { dim:'L', q:'聚会中你通常是？', options:[
+    {text:'话题中心人物',score:{L:2}},{text:'活跃参与者',score:{L:1,Q:1}},
+    {text:'小圈子聊天',score:{L:1,Q:1}},{text:'角落观察员',score:{Q:2}}]},
+  { dim:'L', q:'独处一天后的感受？', options:[
+    {text:'快发霉了要见人',score:{L:2}},{text:'有点闷想出门',score:{L:1,Q:1}},
+    {text:'充好电了',score:{L:1,Q:1}},{text:'太爽了吧',score:{Q:2}}]},
+  { dim:'X', q:'被人冒犯时你的第一反应？', options:[
+    {text:'直接怼回去',score:{X:2}},{text:'表面冷静内心爆炸',score:{X:1,D:1}},
+    {text:'忍了但不开心',score:{X:1,D:1}},{text:'算了不值得',score:{D:2}}]},
+  { dim:'X', q:'深夜突然想起一件不爽的事，你会？', options:[
+    {text:'越想越气必须找渠道发泄出来',score:{X:2}},{text:'翻来覆去脑内重播八百遍',score:{X:1,D:1}},
+    {text:'叹口气翻身睡觉',score:{X:1,D:1}},{text:'已经不记得为什么不爽了',score:{D:2}}]},
+  { dim:'H', q:'你对"计划"的态度是？', options:[
+    {text:'什么计划走一步看一步',score:{H:2}},{text:'有大致方向就行',score:{H:1,C:1}},{text:'喜欢按计划来',score:{H:1,C:1}},{text:'必须详细计划才安心',score:{C:2}}]},
+  { dim:'F', q:'买东西你通常？', options:[
+    {text:'看到就买',score:{F:2}},{text:'比较快就决定了',score:{F:1,S:1}},
+    {text:'货比三家',score:{F:1,S:1}},{text:'研究一周再下单',score:{S:2}}]},
+  { dim:'L', q:'在陌生场合你会主动搭话吗？', options:[
+    {text:'当然！聊起来',score:{L:2}},{text:'看情况可能开口',score:{L:1,Q:1}},
+    {text:'除非必要不开口',score:{L:1,Q:1}},{text:'绝对不开口',score:{Q:2}}]},
+  { dim:'X', q:'遇到不公平的事你会？', options:[
+    {text:'当场发声',score:{X:2}},{text:'私下表达不满',score:{X:1,D:1}},
+    {text:'心里不爽但不行动',score:{X:1,D:1}},{text:'忍忍就过去了',score:{D:2}}]},
+  { dim:'H', q:'你的精力模式是？', options:[
+    {text:'持续高能停不下来',score:{H:2}},{text:'间歇性兴奋',score:{H:1,C:1}},{text:'平稳偏安静',score:{H:1,C:1}},{text:'低能耗省电模式',score:{C:2}}]},
+  { dim:'F', q:'手头事临近截止日期时你会？', options:[
+    {text:'最后冲刺效率拉满',score:{F:2}},{text:'加快节奏赶完',score:{F:1,S:1}},
+    {text:'按计划稳步推进',score:{F:1,S:1}},{text:'早就完成了',score:{S:2}}]},
+  { dim:'L', q:'社交后你需要多久恢复？', options:[
+    {text:'不用恢复越社交越嗨',score:{L:2}},{text:'短时间就好',score:{L:1,Q:1}},
+    {text:'需要几小时',score:{L:1,Q:1}},{text:'至少一天',score:{Q:2}}]},
+  { dim:'X', q:'情绪低落时你倾向？', options:[
+    {text:'立刻找朋友倾诉说完就好',score:{X:2}},{text:'找事做转移注意力',score:{X:1,D:1}},
+    {text:'一个人静静消化',score:{X:1,D:1}},{text:'封闭自己谁也不见',score:{D:2}}]}
+];
+
+const TYPES = {
+  'HFLX':{emoji:'☕️',name:'无限续杯马',code:'HFLX',rarity:'14.1%',slogan:'能量耗尽？自动续上！',img:'cards/card_01.png',tags:['#永动机','#行动力满格','#咖啡续命'],
+    desc:'你的电量永远不会归零。别人喊"累了"的时候你在想下一个点子，别人躺平了你在研究怎么把三件事并行。你的待办清单比超市货架还满——问题是，它们大部分都在第三天同时过期。',
+    roast:'你不是人，是自带REFILL按钮的永动机——一次开十七个线程然后全部挂起的那种。',
+    heal:'行动力是这个时代最稀缺的超能力之一，你就是那个超能力者。但你的价值不该被沉默埋没。学会给自己设个休息倒计时——不是为了停下来，是为了让下一次启动更猛。所有伟大的开始都长着一个"不靠谱"的样子——你就是那个开始。'},
+  'CSQD':{emoji:'📕',name:'已读不回机',code:'CSQD',rarity:'1.5%',slogan:'活着但不参与的奥运冠军',img:'cards/card_02.png',tags:['#已读不回','#灵魂离线','#奥运冠军'],
+    desc:'如果"活着但不参与"是奥林匹克运动，你已经拿了十连冠。群里99+消息已读不回不是故意的，是你的灵魂还在上一条消息的处理队列里排队。',
+    roast:'灵魂还在上一条消息的处理队列里排队，前台卡死了。',
+    heal:'在这个人人都在争着说话的世界里，你是那个愿意倾听的人——这比任何表达都稀有。慢不是拖沓，是每一份回应都经过了深思熟虑；冷不是距离，是把温度留给真正值得的人。'},
+  'HFLD':{emoji:'💃',name:'戏精本精',code:'HFLD',rarity:'9.0%',slogan:'在直播自己的人生',img:'cards/card_03.png',tags:['#戏精本精','#自带BGM','#人生直播'],
+    desc:'你的人生不是在经历，是在直播。走路自带BGM，进门自带聚光灯效果，不出风头你觉得自己不存在了。',
+    roast:'内心摄像头永远24小时开机，表情版本号随场景实时更新。',
+    heal:'你对别人的敏感不是讨好，是一种稀缺天赋。但请记住：不需要成为任何人眼中的"最好的版本"，只需要是你自己的版本。关掉内心的摄像头，你会发现真实的你比演的任何一个角色都迷人。'},
+  'CSQX':{emoji:'💣',name:'底线刺客',code:'CSQX',rarity:'约1%',slogan:'人畜无害直到踩线',img:'cards/card_04.png',tags:['#底线刺客','#温柔炸弹','#踩线警告'],
+    desc:'你温和不是因为没脾气，是因为大多数事不值得你认真。但心里有一条清清楚楚的边界线——平时随便踩，一旦越过，你的反击快、准、狠到让对方怀疑人生。不是爆炸，是精准打击。',
+    roast:"我忍你不是因为我怂，是因为我在给你机会。现在机会用完了。",
+    heal:'你的温柔是选择，不是默认设置。底线存在的意义不是被踩到底才亮出来，而是让别人知道——这里不能碰。试着在边界被试探的第一时间就轻描淡写地划清界限，你会发现大部分冲突根本走不到拔刀那一步。'},
+  'HFQD':{emoji:'☀️',name:'行走的小太阳',code:'HFQD',rarity:'5.2%',slogan:'全人类的充电宝',img:'cards/card_05.png',tags:['#小太阳','#人类充电宝','#暖色系'],
+    desc:'走到哪亮到哪。朋友难过找你，同事迷茫也找你，出厂设置就是暖色系。',
+    roast:'全人类充电宝，但你自己的充电器好像丢了。',
+    heal:'展现脆弱不会让你变弱，敢于示弱才是真正的勇敢。你给了世界那么多光现在轮到你接收一些光了。你的存在本身是礼物不需要通过"有用"来证明。先给自己戴上氧气罩再去帮别人吧——这不是自私是基本操作。'},
+  'CFQD':{emoji:'🕳️',name:'情绪碎纸机',code:'CFQD',rarity:'2.9%',slogan:'行走的情感回收站',img:'cards/card_06.png',tags:['#情绪碎纸机','#情感垃圾桶','#默默吞下'],
+    desc:'所有人的情感垃圾桶，但没人知道你也需倒垃圾。什么都吞得下，却从不知吐出来是什么感觉。',
+    roast:'24小时情感垃圾处理中心，只进不清空，直到凌晨三点枕头被淹。',
+    heal:'你不是空洞你是太满了——满到溢出的部分沉到了看不见的地方。碎纸机也需要定期清空不然会卡机。找一个信任的人哪怕只说一句"最近有点累"。不需要倾诉全部只需要让光照进来一点点。'},
+  'CFLX':{emoji:'🎆',name:'三分钟天才',code:'CFLX',rarity:'9.0%',slogan:'3分钟热度短片合集',img:'cards/card_07.png',tags:['#三分钟天才','#兴趣收藏家','#启动速度满分','#完成率有待提高'],
+    desc:'兴趣列表像未完成的购物车：周一吉他，周二编程，周三播客，周四烘焙，周五看着所有装备沉思。',
+    roast:'兴趣列表是一辆从未结账的未完成购物车。',
+    heal:'知道吗达芬奇和你一样米开朗基罗也是——几乎所有天才都有一个共同点：兴趣广泛到眼花缭乱。与其强迫自己一条路走到黑不如接受你可能就是那个在每个领域都能点亮一把火然后传给下一个人的人。完成的感觉会上瘾的试试看。'},
+  'CSLD':{emoji:'🧱',name:'承重墙',code:'CSLD',rarity:'3.0%',slogan:'高中就在规划退休',img:'cards/card_08.png',tags:['#承重墙','#Excel人生','#提前退休'],
+    desc:'人生是一张Excel表格：带公式、条件格式、数据验证。顺其自然？定义域是什么？',
+    roast:'高中就开始规划退休生活了，备忘录分37个文件夹带子目录。',
+    heal:'在一个加速的时代你是那个踩刹车的人——而刹车有时比油门更重要。你的谨慎是对生活的尊重规划是给未来铺的路。但偶尔允许自己做一次没计划的决定吧买一张不知去向的车票给堡垒留一扇窗给偶然的风。'},
+  'HFQX':{emoji:'⚡',name:'秒回狂魔',code:'HFQX',rarity:'8.9%',slogan:'独行侠里的急性子',img:'cards/card_09.png',tags:['#秒回狂魔','#7秒回复','#急性子'],
+    desc:'微信回复速度让人错觉你没生活。消息弹出、阅读理解、回复全过程不超过7秒。',
+    roast:'脑子想到什么，身体已经做完V2.0了，别人还在想"你什么时候做的？"',
+    heal:'行动力是最稀缺的超能力之一你就是那个超能力者。但你的价值不该被沉默埋没做完一件事后多说一句"搞定了"——不是邀功是让世界知道它欠你一句谢谢。快很好又快又准才无敌做完多花一分钟检查方向。'},
+  'CFLD':{emoji:'🌫️',name:'糊弄博士',code:'CFLD',rarity:'5.3%',slogan:'最热的调范者',img:'cards/card_10.png',tags:['#糊弄博士','#啊对对对','#节能模式'],
+    desc:'人生哲学四个字：啊对对对。老板离谱要求？啊对对。朋友推荐不感兴趣的电影？啊对，好，一定看。',
+    roast:'人生哲学四个字：啊对对对。夜深人静会突然迷茫"我刚才为什么同意了那个？"',
+    heal:'你的适应力是天赋但适应不代表消失。花了太多时间变成别人需要的形状剩下的不够做自己了。试一天就一天在一个小事上说出真实想法——世界不会崩塌但你会多一分重量。散去后的你会比任何形状的你都好看。'},
+  'HSLD':{emoji:'🌿',name:'职场老母亲',code:'HSLD',rarity:'5.2%',slogan:'最吵的慢性子',img:'cards/card_11.png',tags:['#职场老母亲','#操心体质','#慢性子'],
+    desc:'一边递热水一边唠叨半小时：吃饭了吗？穿外套了吗？文件备份了吗？每天对不同人说至少五遍。',
+    roast:'一边递热水一边唠叨半小时，关心伴随着"我知道什么对你最好"的潜台词——但从来没人问过你呢。',
+    heal:'你的犹豫不是因为软弱是因为真心在意每一个选择的分量。种子不需要被分析才会发芽有些决定交给直觉吧。你已经收集了足够多的阳光和雨水无论哪条路你的温柔都会让它开出花来。'},
+  'HSQX':{emoji:'🎈',name:'充气人',code:'HSQX',rarity:'5.4%',slogan:'人形气球',img:'cards/card_12.png',tags:['#充气人','#人形气球','#越充越大'],
+    desc:'你有一项被动技能：把天大的委屈压缩成一句\"没事\"发出去。同事甩锅？没事。朋友迟到？没事。连你自己都信了——直到某天照镜子发现人已经比门框还宽。不是坚强，是充气了。',
+    roast:'人形气球，每天都在自信满满地充气。\"我还能再忍一点\"——这句话就是你的打气筒。',
+    heal:'\"没事\"不是护身符，说多了会变成紧箍咒。你不需要等到飘起来才意识到自己在充气——一句\"我今天不太舒服\"不会让世界塌掉，但会让你的胸口感官重新上线。放气不是认输，是防止自己炸成烟花。'},
+  'HSLX':{emoji:'🎋',name:'笑面佛本尊',code:'HSLX',rarity:'9.0%',slogan:'外表柔韧内心刚硬',img:'cards/card_13.png',tags:['#笑面佛','#内心评分表','#柔韧刚硬'],
+    desc:'谜中之谜。外表温润如玉，永远挂恰到好处的微笑。内心有套完整评分体系，默默给每个人打分。',
+    roast:'笑容下藏着完整的评价体系，默默给每个人打分，心里门儿清但嘴上笑嘻嘻。',
+    heal:'笑面佛能在风雨中不折不断，是因为懂得弯曲但从不折断。不需要因为不好懂而焦虑，值得了解的人会愿意等，不值得的人走了也不可惜。笑是真心觉得大部分事不值得较真，这种豁达稀缺。偶尔不笑一次，别人反而更认真听你说。'},
+  'HSQD':{emoji:'📢',name:'鸡汤贩子',code:'HSQD',rarity:'3.0%',slogan:'全天候免费导航',img:'cards/card_14.png',tags:['#鸡汤贩子','#人生导师','#免费导航'],
+    desc:'有超能力把任何话题引向人生道理。朋友说"我好烦"，你说"烦恼是成长的契机"。初衷是好，但像你不够好。',
+    roast:'全天候免费导航，任何话题三句话内必定引向人生道理——你自己的指南针好像一直指着北方却从来没走过。',
+    heal:'最有力量的话往往最短，一句"我在"比一百句"你要这样想"更有治愈力。鸡汤贩子也需要有人换灯泡。试着对最信任的那个人说出一句"其实我需要帮助"——这示弱是你教会别人的最重要的一课。就连鸡汤贩子也有权利歇一歇。'},
+  'CFQX':{emoji:'♨️',name:'高压锅',code:'CFQX',rarity:'5.4%',slogan:'锅盖下的开水',img:'cards/card_15.png',tags:['#高压锅','#情绪火山','#减压阀门'],
+    desc:'你是朋友圈公认的"最稳定"的人——但你的情绪没有音量键，只有开关。平时静音模式运转良好，直到某个连你自己都意外的瞬间，突然满格输出。事后你比谁都懵：刚才那个咆哮的人是谁？',
+    roast:"连我自己都不知道为什么就炸了——上一秒还好好的，下一秒已经失控。",
+    heal:'你不是要学会"不发火"，你是要学会在音量30的时候就开口。"我有点不舒服"不是软弱，是情绪调音技术。试着每天给自己一次"低声表达"的练习——不必等到满格才出声，中间音量也是一种力量。'},
+  'CSLX':{emoji:'👻',name:'人间蒸发选手',code:'CSLX',rarity:'5.3%',slogan:'博物馆级蒸发艺术家',img:'cards/card_16.png',tags:['#人间蒸发','#博物馆级','#优雅消失'],
+    desc:'人间蒸发已是终身教授，诺贝尔奖级。团建？有事。聚餐？不太舒服。群视频？网络不好。',
+    roast:'博物馆级蒸发艺术家，借口库存够出书《100种优雅消失的方法》。',
+    heal:'人间蒸发不是逃避，是选择了另一种参与方式。独处是与自己相处的品质时间，这种能力在嘈杂的时代是奢侈品。不需要强迫外向或合群，你的价值不由音量定义。沉默的人往往看得最清，但观察再多也得上场改写剧本。门能重开，只要你愿推。'},
+
+  // 隐藏人格
+  'EXTREME_A':{emoji:'💣',isHidden:true,name:'社交手榴弹',code:'EXTREME_A',rarity:'约1%',slogan:'拉环已拔倒计时开始',img:'cards/card_17.png',tags:['#社交手榴弹','#核武器型','#能量满格'],
+    desc:'每道题都选了最热烈、最冲动、最炸裂的选项。这不是答题，这是你的出厂设置。',
+    roast:'一颗没有拉环的手榴弹，到处点火但从不看风向——燃料够了，方向呢？',
+    heal:'你不是失控，是还没学会分场合的真诚。这个世界需要你的火焰——只是下次先看看风向再点火。火焰珍贵，找到能兜你的人，让它照亮更多人而非烧毁一切。不需被要求冷静，你听这话只会更炸——那就对了，炸在该炸的地方。'},
+  'EXTREME_B':{emoji:'🕳️',isHidden:true,name:'人间制冷机',code:'EXTREME_B',rarity:'3.0%',slogan:'别来沾边我连自己的边都不沾',img:'cards/card_18.png',tags:['#人间制冷机','#绝对零度','#绝对防御'],
+    desc:'每道题都选了最冷静、最缓慢、最内敛、最防御的选项。这不是克制，是你的默认出厂模式。',
+    roast:'一台没有制热功能的制冷机，防御力做成结界，挡住了超新星爆发也挡住了照亮你的光。',
+    heal:'你不是冷漠，是把温度调到了自己都感觉不到的程度。但冰层下面有一座火山，你只是需要一个足够安全的人才愿意让它化一点点。你的冷静是疯狂世界的锚，但墙建太厚也挡阳光。偶尔开扇窗，感受风吹进来的温度。平静是力量，但力量也可以有温度。'},
+  'EXTREME_C':{emoji:'⚖️',isHidden:true,name:'完美圆滑人',code:'EXTREME_C',rarity:'约1%',slogan:'每面都不得罪',img:'cards/card_19.png',tags:['#完美圆滑人','#端水大师','#平衡大师'],
+    desc:'每道题都选温和选项。不是在答题，是在端水。每碗水端得平平稳稳、滴水不漏。',
+    roast:'一碗端得太平的水，每个人都觉得你不错，但没有人觉得你不可替代。',
+    heal:'圆滑不是没有棱角，是被打磨过的结果，但别磨到认不出原形。不选也是一种选，不得罪人不等于被人记住。你的温和是天赋，但偶尔站一次队，天不会塌。偶尔难搞一次反而让人记住你是谁。棱角被打磨过，但别磨掉全部。'},
+  'EXTREME_D':{emoji:'👻',isHidden:true,name:'透明人2.0',code:'EXTREME_D',rarity:'<0.1%',slogan:'1.0至少还有个影子',img:'cards/card_20.png',tags:['#透明人2.0','#NPC嫌疑','#隐身达人'],
+    desc:'每道题都选最冷静、最佛系的温和选项。你的存在感低到Wi-Fi信号都搜不到你。1.0版至少还有个影子，你连影子都省了。',
+    roast:'物理意义上的隐形NPC。存在但没注意到，说话没记住，离开也没发现——1.0至少还有个影子，你2.0连影子都省了。',
+    heal:'超越情绪不等于没情绪。如果"无所谓"是真通透那很好；但如果只是懒得面对，也许偶尔让自己被看见不会死的。你的平静不是修行，是习惯性隐身。偶尔制造点动静，门能重开，只要你愿推开它。茶泡好了，你也出来喝一杯吧。'}
+};
+
+let currentQ = 0;
+let userChoices = [];
+let resultTypeData = null;
+
+function startQuiz() {
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('quiz').style.display = 'block';
+  currentQ = 0;
+  userChoices = [];
+  showQuestion();
+}
+
+function showQuestion() {
+  const q = QUESTIONS[currentQ];
+  const progress = (currentQ / QUESTIONS.length) * 100;
+  document.getElementById('progressFill').style.width = progress + '%';
+  
+  let html = '<div class="q-num">第 ' + (currentQ+1) + '/' + QUESTIONS.length + ' 题</div>';
+  html += '<div class="q-text">' + q.q + '</div>';
+  html += '<div class="options">';
+  const letters = ['A','B','C','D'];
+  var idxArr = [0,1,2,3];
+  for (var i = 3; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = idxArr[i]; idxArr[i] = idxArr[j]; idxArr[j] = tmp;
+  }
+  for (var di = 0; di < 4; di++) {
+    var origIdx = idxArr[di];
+    html += '<div class="option" onclick="selectOption('+origIdx+')">';
+    html += '<span class="opt-letter">'+letters[di]+'</span>';
+    html += '<span>'+q.options[origIdx].text+'</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('quizContent').innerHTML = html;
+}
+
+function selectOption(origIdx) {
+  const q = QUESTIONS[currentQ];
+  const opt = q.options[origIdx];
+  userChoices.push(origIdx);
+  
+  var scores = {H:0,C:0,F:0,S:0,L:0,Q:0,X:0,D:0};
+  for (var ci = 0; ci < userChoices.length; ci++) {
+    const cq = QUESTIONS[ci];
+    const co = cq.options[userChoices[ci]];
+    for (var sk in co.score) { scores[sk] += co.score[sk]; }
+  }
+  
+  currentQ++;
+  if (currentQ >= QUESTIONS.length) {
+    showResult(scores);
+  } else {
+    showQuestion();
+  }
+}
+
+function renderDimBars(scores, finalType) {
+  const dims = [
+    { icon:'🔥', label:'能量', hot:'H', cold:'C', hotName:'热烈', coldName:'冷静' },
+    { icon:'⚡', label:'决策', hot:'F', cold:'S', hotName:'快速', coldName:'缓慢' },
+    { icon:'🎤', label:'社交', hot:'L', cold:'Q', hotName:'外放', coldName:'内敛' },
+    { icon:'🛡️', label:'应对', hot:'X', cold:'D', hotName:'爆发', coldName:'防御' }
+  ];
+  const total = scores.H + scores.C + scores.F + scores.S + scores.L + scores.Q + scores.X + scores.D || 1;
+  
+  let html = '';
+  const dimKeys = ['H','C','F','S','L','Q','X','D'];
+  for (let i = 0; i < dims.length; i++) {
+    const d = dims[i];
+    const h = scores[d.hot] || 0, c = scores[d.cold] || 0;
+    const sum = h + c;
+    const hp = sum ? Math.round(h / sum * 100) : 50;
+    const cp = 100 - hp;
+    const isTie = hp === cp;
+    
+    // 用finalType决定哪个字母高亮（你的实际人格字母）
+    let hotCls = '', coldCls = '';
+    if (finalType) {
+      // finalType第i位：0→H/C, 1→F/S, 2→L/Q, 3→X/D
+      const typeChar = finalType[i] || '';
+      if (typeChar === d.hot) hotCls = ' dim-tilt-hot';   // 你的字母在热侧→热侧红
+      else if (typeChar === d.cold) coldCls = ' dim-tilt-cold'; // 你的字母在冷侧→冷侧蓝
+    }
+    
+    html += '<div class="dim-row">';
+    html += '<span class="dim-icon">'+d.icon+'</span>';
+    html += '<span class="dim-label">'+d.label+'</span>';
+    html += '<span class="dim-letter'+hotCls+'"><b>'+d.hot+'</b></span>';
+    html += '<div class="dim-bar-wrap">';
+    if (hp > 0) html += '<div class="bar-hot" style="width:'+hp+'%"><span class="bar-pct">'+hp+'%</span></div>';
+    if (cp > 0 && hp < 100) html += '<div class="bar-cold" style="width:'+cp+'%"><span class="bar-pct">'+cp+'%</span></div>';
+    html += '</div>';
+    html += '<span class="dim-letter'+coldCls+'"><b>'+d.cold+'</b></span>';
+    html += '</div>';
+  }
+  
+  document.getElementById('dimBreakdown').innerHTML = html;
+}
+
+function showResult(scores) {
+  var typeStr = '';
+  typeStr += (scores.H >= scores.C ? 'H' : 'C');
+  typeStr += (scores.F >= scores.S ? 'F' : 'S');
+  typeStr += (scores.L >= scores.Q ? 'L' : 'Q');
+  typeStr += (scores.X >= scores.D ? 'X' : 'D');
+
+  var finalType = typeStr;
+
+  // 隐藏人格检测（分布优化版v3）
+  // 统计极端维度和平局维度
+  var hotExtreme = 0, coldExtreme = 0, tieCount = 0;
+  if (scores.H >= 6) hotExtreme++;
+  if (scores.F >= 6) hotExtreme++;
+  if (scores.L >= 6) hotExtreme++;
+  if (scores.X >= 6) hotExtreme++;
+  if (scores.C >= 6) coldExtreme++;
+  if (scores.S >= 6) coldExtreme++;
+  if (scores.Q >= 6) coldExtreme++;
+  if (scores.D >= 6) coldExtreme++;
+  if (scores.H === scores.C) tieCount++;
+  if (scores.F === scores.S) tieCount++;
+  if (scores.L === scores.Q) tieCount++;
+  if (scores.X === scores.D) tieCount++;
+
+  // 隐藏人格检测：得分模式+结果替换（方案A）
+  // 优先级：完美平衡 > 高度平衡 > 极端热侧 > 极端冷侧
+  if (tieCount === 4) finalType = 'EXTREME_D';                                          // 4维全平局（<0.1%）
+  else if (tieCount >= 3) {
+    var totalHot = scores.H + scores.F + scores.L + scores.X;
+    if (totalHot >= 15 && totalHot <= 17) finalType = 'EXTREME_C';                     // ≥3维平局且总体平衡（约4%）
+  }
+  else if (typeStr === 'HFLX' && hotExtreme >= 3) finalType = 'EXTREME_A';             // HFLX且≥3维热侧≥6（约1%）
+  else if (typeStr === 'CSQD' && coldExtreme >= 3) finalType = 'EXTREME_B';            // CSQD且≥3维冷侧≥6（约1%）
+
+  window.finalType = finalType;
+  const t = TYPES[finalType] || TYPES[typeStr];
+  resultTypeData = t;
+
+  // 渲染四维反差拆解条（隐藏人格用finalType故意让字母不变色，和常规人格视觉区分）
+  renderDimBars(scores, finalType);
+
+  document.getElementById('quiz').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+  
+  // 卡牌图
+  var imgEl = document.getElementById('resultImg');
+  if(t.img){imgEl.src=t.img}else{imgEl.style.display='none'}
+  imgEl.onerror=function(){this.style.display='none'};
+  
+  // 名称条（不含emoji，图片已显示）
+  document.getElementById('resultTitle').textContent = t.name;
+  document.getElementById('resultSlogan').textContent = t.slogan || '';
+  document.getElementById('resultCode').textContent = '[' + t.code + ']';
+  
+  // 隐藏人格徽章
+  var badgeEl = document.getElementById('hiddenBadge');
+  if (t.isHidden) {
+    badgeEl.innerHTML = '<div class="hidden-badge">🏆 隐藏人格</div><div class="hidden-congrats">恭喜你解锁了稀有隐藏人格！</div>';
+  } else {
+    badgeEl.innerHTML = '';
+  }
+
+  // 稀有度百分比
+  var rarityEl = document.getElementById('resultRarity');
+  if (rarityEl && t.rarity) {
+    var onlyText = (finalType === 'HFLX') ? '' : '仅 ';
+    rarityEl.innerHTML = '<div class="rarity-bar">📊 全站' + onlyText + '<span class="rarity-num">' + t.rarity.replace('%','') + '%</span> 的人测出这个人格</div>';
+    rarityEl.style.display = 'block';
+  } else if (rarityEl) {
+    rarityEl.style.display = 'none';
+  }
+  
+  // 描述
+  document.getElementById('resultDesc').innerHTML = t.desc.replace(/\n/g,'<br>');
+  
+  // 毒舌金句 & 治愈金句
+  document.getElementById('resultRoast').innerHTML = t.roast;
+  document.getElementById('resultHeal').innerHTML = t.heal || '';
+  
+  // 标签
+  var tagsHtml = '';
+  var tagList = t.tags || ['#'+t.name];
+  for(var ti=0;ti<tagList.length;ti++){
+    tagsHtml+='<span class="tag-pill">'+tagList[ti]+'</span>';
+  }
+  document.getElementById('resultTags').innerHTML = tagsHtml;
+  
+  window.scrollTo(0,0);
+  console.log('[BTI] Result:', t.name, t.code, 'img:', t.img);
+}
+
+// 分析卡片 - 生成后弹窗预览，用户决定是否下载
+function shareCard(){
+  if(!resultTypeData){alert('没有结果数据');return;}
+  var t=resultTypeData;
+  
+  // 填充分享卡片内容
+  document.getElementById('shareImg').src=t.img||'';
+  document.getElementById('shareImg').onerror=function(){this.style.display='none'};
+  document.getElementById('shareName').textContent=t.name;
+  document.getElementById('shareSlogan').textContent=t.slogan||'';
+  var descText=t.roast.replace(/\n/g,'<br>');
+  if(descText.length>120)descText=descText.substring(0,120)+'...';
+  document.getElementById('shareDesc').innerHTML=descText;
+  var healText=t.heal||'';
+  if(healText.length>150)healText=healText.substring(0,150)+'...';
+  document.getElementById('shareHeal').textContent=healText;
+  
+  var tagHtml='';
+  var tl=(t.tags||['#'+t.name]).slice(0,4);
+  for(var i=0;i<tl.length;i++){tagHtml+='<span class="scard-tag">'+tl[i]+'</span>';}
+  document.getElementById('shareTags').innerHTML=tagHtml;
+  
+  // 填充隐藏人格信息
+  document.getElementById('shareCode').textContent = (t.code || '').toUpperCase();
+  var hiddenBadge = document.getElementById('shareHiddenBadge');
+  if (t.isHidden) { hiddenBadge.style.display = 'block'; } else { hiddenBadge.style.display = 'none'; }
+  var shareOnlyText = (window.finalType === 'HFLX') ? '' : '仅 ';
+  document.getElementById('shareRarity').innerHTML = '📊 全站' + shareOnlyText + '<span style="color:#ffd700;font-size:16px;">' + (t.rarity || '').replace('%','') + '%</span> 的人测出这个人格';
+
+  // 显示加载中状态
+  var overlay=document.getElementById('cardOverlay');
+  var previewImg=document.getElementById('cardPreview');
+  var cardActions=document.getElementById('cardActions');
+  overlay.style.display='flex';
+  previewImg.style.display='none';
+  cardActions.style.display='none';
+  document.getElementById('cardLoading').style.display='block';
+  
+  // 渲染卡片到canvas
+  var sa=document.getElementById('shareArea');
+  sa.style.display='block';
+  sa.style.position='fixed';sa.style.left='-9999px';sa.style.top='0';
+  
+  setTimeout(function(){
+    html2canvas(sa,{
+      backgroundColor:'#12122a',scale:2,useCORS:true,
+      allowTaint:true,logging:false
+    }).then(function(canvas){
+      sa.style.display='none';
+      // 在overlay中显示预览图
+      var wrap=document.getElementById('cardPreviewWrap');
+      wrap.style.display='block';
+      previewImg.src=canvas.toDataURL('image/png');
+      previewImg.style.display='block';
+      cardActions.style.display='flex';
+      document.getElementById('cardLoading').style.display='none';
+      
+      // 存储下载链接
+      previewImg.dataset.downloadUrl=canvas.toDataURL('image/png');
+    }).catch(function(e){
+      console.error('[BTI] shareCard error:',e);
+      alert('生成失败，请稍后重试');overlay.style.display='none';sa.style.display='none';
+    });
+  },300);
+}
+
+// 下载卡片
+function downloadCard(){
+  var url=document.getElementById('cardPreview').dataset.downloadUrl;
+  if(!url){alert('图片未准备好');return;}
+  var link=document.createElement('a');
+  link.download='BTI-'+resultTypeData.code+'-分析卡片.png';
+  link.href=url;link.click();
+}
+
+// 关闭卡片预览
+function closeCardPreview(){
+  document.getElementById('cardOverlay').style.display='none';
+}
+
+
+// ========== 开始测试入口 ==========
+function goTest() {
+    try {
+        startQuiz();
+    } catch(e) {
+        alert('启动测试失败：' + e.message);
+    }
+}
+
+
+// ========== 自动执行待启动的测试 ==========
+if (window.BTI_PENDING) {
+    window.BTI_PENDING = false;
+    startQuiz();
+}
+</script>
+</body>
+</html>
